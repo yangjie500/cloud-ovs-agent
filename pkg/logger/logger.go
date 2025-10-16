@@ -2,10 +2,14 @@ package logger
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
 	"sync/atomic"
+
+	"github.com/yangjie500/cloud-ovs-agent/pkg/config"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 type Level int32
@@ -19,19 +23,42 @@ const (
 
 var (
 	currentLevel atomic.Int32
-	logger       = log.New(os.Stdout, "", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
+	logger       *log.Logger
 )
 
 func init() {
-	SetLevelFromEnv()
+	config, err := config.LoadAll(".env")
+	if err != nil {
+		log.Fatalf("Error reading configuration: %v", err)
+	}
+	initWriters(config)
+	SetLevelFromEnv(config)
+}
+
+func initWriters(cfg config.Config) {
+	rot := &lumberjack.Logger{
+		Filename:   cfg.LogFile,
+		MaxSize:    cfg.LogMaxSizeMb,
+		MaxBackups: cfg.LogMaxBackups,
+		MaxAge:     cfg.LogMaxAgeDays,
+		Compress:   cfg.LogCompress,
+	}
+
+	var w io.Writer = rot
+	if cfg.LogToStdout {
+		w = io.MultiWriter(os.Stdout, rot)
+	}
+	// Use UTC timestamps for consistency across hosts/regions.
+	flags := log.LstdFlags | log.Lmicroseconds | log.Lshortfile | log.LUTC
+	logger = log.New(w, "", flags)
 }
 
 func SetLevel(l Level) {
 	currentLevel.Store(int32(l))
 }
 
-func SetLevelFromEnv() {
-	levelStr := strings.ToLower(os.Getenv("LOG_LEVEL"))
+func SetLevelFromEnv(cfg config.Config) {
+	levelStr := strings.ToLower(cfg.LogLevel)
 	fmt.Println(levelStr)
 	switch levelStr {
 	case "debug":
