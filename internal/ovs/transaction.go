@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/ovn-kubernetes/libovsdb/client"
 	"github.com/ovn-kubernetes/libovsdb/ovsdb"
-	"github.com/yangjie500/cloud-ovs-agent/internal/netdev"
 	"github.com/yangjie500/cloud-ovs-agent/pkg/logger"
 )
 
@@ -56,12 +55,6 @@ func EnsureInterfaceOnBridge(ctx context.Context, client client.Client, bridgeNa
 		}
 		ops = append(ops, portOps...)
 
-		bridgeOps, err := buildAttachPortToBridgeOps(client, br.UUID, newPortID)
-		if err != nil {
-			return err
-		}
-		ops = append(ops, bridgeOps...)
-
 	} else {
 		logger.Errorf("Interface %s and Port %s already existed already. Consider deleting it", ifName, logicalPort)
 		return fmt.Errorf("Interface %s and Port %s already existed", ifName, logicalPort)
@@ -83,7 +76,15 @@ func EnsureInterfaceOnBridge(ctx context.Context, client client.Client, bridgeNa
 		logger.Errorf("[ovs] transact failed: %v", err)
 		return err
 	}
-	logger.Debugf("Result %+v", result)
+
+	for _, r := range result {
+		if r.Error != "" {
+			err := fmt.Errorf("ovs error: %s (details: %s)", r.Error, r.Details)
+			logger.Errorf("[ovs] ensure interface on bridge error: %v", err)
+			return err
+		}
+	}
+
 	logger.Infof("[ovs] ensured if=%s on bridge=%s in %s", ifName, bridgeName, time.Since(start).Truncate(time.Millisecond))
 	return nil
 }
@@ -105,7 +106,7 @@ func RemoveInterfaceFromBridge(ctx context.Context, client client.Client, bridge
 
 	if br != nil && port != nil && bridgeHasPort(br, port.UUID) {
 		logger.Debugf("[ovs] detaching port %s from bridge %s", logicalPort, bridgeName)
-		detachOps, err := buildDeletePortFromBridgeOps(client, br.UUID, port.UUID)
+		detachOps, err := buildDetachPortFromBridgeOps(client, br.UUID, port.UUID)
 		if err != nil {
 			return err
 		}
@@ -123,13 +124,6 @@ func RemoveInterfaceFromBridge(ctx context.Context, client client.Client, bridge
 		return err
 	}
 	logger.Debugf("Result %+v", result)
-
-	_ = netdev.SetLinkDown(ifName)
-	if err := netdev.DeleteLink(ifName); err != nil {
-		logger.Warnf("[netdev] delete link %s: %v", ifName, err)
-	} else {
-		logger.Debugf("[netdev] deleted link %s", ifName)
-	}
 
 	logger.Infof("[ovs] cleanup done for if=%s in %s", ifName, time.Since(start).Truncate(time.Millisecond))
 	return nil
