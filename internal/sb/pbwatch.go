@@ -2,7 +2,6 @@ package sb
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/ovn-kubernetes/libovsdb/cache"
 	"github.com/ovn-kubernetes/libovsdb/client"
@@ -60,7 +59,7 @@ func (w *PBWatcher) onAdd(table string, m model.Model) {
 		return
 	}
 
-	fmt.Printf("UUID: %s; logicalPort: %s; type: %s; datapath: %s, tunnelKey: %d, chassis: %s, up: %t; options: %+v",
+	logger.Infof("UUID: %s; logicalPort: %s; type: %s; datapath: %s, tunnelKey: %d, chassis: %s, up: %t; options: %+v",
 		pb.UUID,
 		pb.LogicalPort,
 		pb.Type,
@@ -69,6 +68,11 @@ func (w *PBWatcher) onAdd(table string, m model.Model) {
 		valOrNil(pb.Chassis),
 		valOrNil(pb.Up),
 		pb.Options)
+
+	if pb.Type == "patch" {
+		logger.Debugf("[agent] Ignoring router portl; router: %s", pb.LogicalPort)
+		return
+	}
 
 	isForThisChassis := w.requestedForThisChassis(pb)
 	if !isForThisChassis {
@@ -105,7 +109,7 @@ func (w *PBWatcher) onDelete(table string, m model.Model) {
 		return
 	}
 
-	fmt.Printf("UUID: %s; logicalPort: %s; type: %s; datapath: %s, tunnelKey: %d, chassis: %s, up: %t; options: %+v",
+	logger.Infof("UUID: %s; logicalPort: %s; type: %s; datapath: %s, tunnelKey: %d, chassis: %s, up: %t; options: %+v",
 		pb.UUID,
 		pb.LogicalPort,
 		pb.Type,
@@ -114,6 +118,11 @@ func (w *PBWatcher) onDelete(table string, m model.Model) {
 		valOrNil(pb.Chassis),
 		valOrNil(pb.Up),
 		pb.Options)
+
+	if pb.Type == "patch" {
+		logger.Debugf("[agent] Ignoring router portl; router: %s", pb.LogicalPort)
+		return
+	}
 
 	ifName := pb.LogicalPort
 
