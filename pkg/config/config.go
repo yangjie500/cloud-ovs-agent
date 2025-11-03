@@ -19,6 +19,10 @@ type Config struct {
 	LogMaxBackups int
 	LogMaxAgeDays int
 	LogCompress   bool
+
+	SouthboundIp   string
+	SouthboundPort string
+	HypervisorName string
 }
 
 func LoadAll(dotenvPaths ...string) (Config, error) {
@@ -43,6 +47,9 @@ func Load() (Config, error) {
 	cfg.LogMaxBackups = mustInt("LOG_MAX_BACKUPS", 7, &errs)
 	cfg.LogMaxAgeDays = mustInt("LOG_MAX_AGE_DAYS", 14, &errs)
 	cfg.LogCompress = mustBool("LOG_COMPRESS", true, &errs)
+	cfg.SouthboundIp = getenv("SOUTHBOUND_IP", "")
+	cfg.SouthboundPort = getenv("SOUTHBOUND_PORT", "6642")
+	cfg.HypervisorName = getenv("HYPERVISOR_NAME", "hypervisor-1")
 
 	if len(errs) > 0 {
 		return cfg, errors.New(strings.Join(errs, "; "))
