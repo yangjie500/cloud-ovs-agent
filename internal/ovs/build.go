@@ -10,7 +10,6 @@ import (
 )
 
 func buildCreateInterfaceOps(client client.Client, ifaceUUID, ifName, logicalPort string) ([]ovsdb.Operation, error) {
-
 	ifRow := &Interface{
 		UUID: ifaceUUID,
 		Name: ifName,
@@ -23,6 +22,20 @@ func buildCreateInterfaceOps(client client.Client, ifaceUUID, ifName, logicalPor
 	ops, err := client.Create(ifRow)
 	if err != nil {
 		logger.Errorf("[ovs] build create-if op failed: %v", err)
+		return nil, err
+	}
+	return ops, nil
+}
+
+func buildCreatePortOps(client client.Client, portUUID, portName, ifaceRef string) ([]ovsdb.Operation, error) {
+	portRow := &Port{
+		UUID:       portUUID,
+		Name:       portName,
+		Interfaces: []string{ifaceRef},
+	}
+	ops, err := client.Create(portRow)
+	if err != nil {
+		logger.Errorf("[ovs] build create-port op failed %v", err)
 		return nil, err
 	}
 	return ops, nil
@@ -42,7 +55,7 @@ func buildAttachPortToBridgeOps(client client.Client, bridgeUUID, portRef string
 	return ops, nil
 }
 
-func buildDeletePortFromBridgeOps(client client.Client, bridgeUUID, portRef string) ([]ovsdb.Operation, error) {
+func buildDetachPortFromBridgeOps(client client.Client, bridgeUUID, portRef string) ([]ovsdb.Operation, error) {
 	if bridgeUUID == "" || portRef == "" {
 		logger.Errorf("detach: empty bridge or port UUID; bridge=%s port=%s", bridgeUUID, portRef)
 		return nil, fmt.Errorf("detach: empty bridge or port UUID")
@@ -59,33 +72,6 @@ func buildDeletePortFromBridgeOps(client client.Client, bridgeUUID, portRef stri
 		return nil, fmt.Errorf("build delete bridge mutate (detach port) failed: %w", err)
 	}
 
-	return ops, nil
-}
-
-func buildDeleteInterfaceOps(client client.Client, ifaceUUID string) ([]ovsdb.Operation, error) {
-	if ifaceUUID == "" {
-		return nil, fmt.Errorf("delete iface: emty UUID")
-	}
-
-	m := &Interface{UUID: ifaceUUID}
-	ops, err := client.Where(m).Delete()
-	if err != nil {
-		logger.Errorf("[ovs] build delete interface op failed: %v", err)
-	}
-	return ops, nil
-}
-
-func buildCreatePortOps(client client.Client, portUUID, portName, ifaceRef string) ([]ovsdb.Operation, error) {
-	portRow := &Port{
-		UUID:       portUUID,
-		Name:       portName,
-		Interfaces: []string{ifaceRef},
-	}
-	ops, err := client.Create(portRow)
-	if err != nil {
-		logger.Errorf("[ovs] build create-port op failed %v", err)
-		return nil, err
-	}
 	return ops, nil
 }
 
@@ -145,5 +131,18 @@ func buildEnsureIfaceIdOps(client client.Client, iface *Interface, logicalPort s
 		ops = append(ops, insOps...)
 	}
 
+	return ops, nil
+}
+
+func buildDeleteInterfaceOps(client client.Client, ifaceUUID string) ([]ovsdb.Operation, error) {
+	if ifaceUUID == "" {
+		return nil, fmt.Errorf("delete iface: emty UUID")
+	}
+
+	m := &Interface{UUID: ifaceUUID}
+	ops, err := client.Where(m).Delete()
+	if err != nil {
+		logger.Errorf("[ovs] build delete interface op failed: %v", err)
+	}
 	return ops, nil
 }
