@@ -75,74 +75,74 @@ func buildDetachPortFromBridgeOps(client client.Client, bridgeUUID, portRef stri
 	return ops, nil
 }
 
-func buildDeletePortOps(client client.Client, portUUID string) ([]ovsdb.Operation, error) {
-	if portUUID == "" {
-		return nil, fmt.Errorf("delete port: empty UUID")
-	}
-	m := &Port{UUID: portUUID}
-	ops, err := client.Where(m).Delete()
-	if err != nil {
-		logger.Errorf("[ovs] build delete port op failed: %v", err)
-	}
-	return ops, nil
-}
+// func buildDeletePortOps(client client.Client, portUUID string) ([]ovsdb.Operation, error) {
+// 	if portUUID == "" {
+// 		return nil, fmt.Errorf("delete port: empty UUID")
+// 	}
+// 	m := &Port{UUID: portUUID}
+// 	ops, err := client.Where(m).Delete()
+// 	if err != nil {
+// 		logger.Errorf("[ovs] build delete port op failed: %v", err)
+// 	}
+// 	return ops, nil
+// }
 
-// Build ops to ensure external_ids:iface-id equals logicalPort (without overwriting other keys).
-func buildEnsureIfaceIdOps(client client.Client, iface *Interface, logicalPort string) ([]ovsdb.Operation, error) {
-	cur := ""
-	if iface.ExternalIDs != nil {
-		if v, ok := iface.ExternalIDs["iface-id"]; ok {
-			cur = v
-		}
-	}
-	if cur == logicalPort {
-		logger.Debugf("[ovs] iface-id already correct on %s", iface.Name)
-		return nil, nil
-	}
+// // Build ops to ensure external_ids:iface-id equals logicalPort (without overwriting other keys).
+// func buildEnsureIfaceIdOps(client client.Client, iface *Interface, logicalPort string) ([]ovsdb.Operation, error) {
+// 	cur := ""
+// 	if iface.ExternalIDs != nil {
+// 		if v, ok := iface.ExternalIDs["iface-id"]; ok {
+// 			cur = v
+// 		}
+// 	}
+// 	if cur == logicalPort {
+// 		logger.Debugf("[ovs] iface-id already correct on %s", iface.Name)
+// 		return nil, nil
+// 	}
 
-	m := &Interface{
-		UUID: iface.UUID,
-	}
+// 	m := &Interface{
+// 		UUID: iface.UUID,
+// 	}
 
-	ops := make([]ovsdb.Operation, 0, 2)
+// 	ops := make([]ovsdb.Operation, 0, 2)
 
-	if cur != "" {
-		delOps, err := client.Where(m).Mutate(m, model.Mutation{
-			Field:   &m.ExternalIDs,
-			Mutator: ovsdb.MutateOperationDelete,
-			Value:   map[string]string{"iface-id": logicalPort},
-		})
-		if err != nil {
-			return nil, fmt.Errorf("build delete iface-id mutate: %w", err)
-		}
-		ops = append(ops, delOps...)
-	}
+// 	if cur != "" {
+// 		delOps, err := client.Where(m).Mutate(m, model.Mutation{
+// 			Field:   &m.ExternalIDs,
+// 			Mutator: ovsdb.MutateOperationDelete,
+// 			Value:   map[string]string{"iface-id": logicalPort},
+// 		})
+// 		if err != nil {
+// 			return nil, fmt.Errorf("build delete iface-id mutate: %w", err)
+// 		}
+// 		ops = append(ops, delOps...)
+// 	}
 
-	if logicalPort != "" {
-		insOps, err := client.Where(m).Mutate(m, model.Mutation{
-			Field:   &m.ExternalIDs,
-			Mutator: ovsdb.MutateOperationInsert,
-			Value:   map[string]string{"iface-id": logicalPort},
-		})
-		if err != nil {
-			logger.Errorf("[ovs] build insert iface-id mutate failed: %v", err)
-			return nil, fmt.Errorf("build insert iface-id mutate: %w", err)
-		}
-		ops = append(ops, insOps...)
-	}
+// 	if logicalPort != "" {
+// 		insOps, err := client.Where(m).Mutate(m, model.Mutation{
+// 			Field:   &m.ExternalIDs,
+// 			Mutator: ovsdb.MutateOperationInsert,
+// 			Value:   map[string]string{"iface-id": logicalPort},
+// 		})
+// 		if err != nil {
+// 			logger.Errorf("[ovs] build insert iface-id mutate failed: %v", err)
+// 			return nil, fmt.Errorf("build insert iface-id mutate: %w", err)
+// 		}
+// 		ops = append(ops, insOps...)
+// 	}
 
-	return ops, nil
-}
+// 	return ops, nil
+// }
 
-func buildDeleteInterfaceOps(client client.Client, ifaceUUID string) ([]ovsdb.Operation, error) {
-	if ifaceUUID == "" {
-		return nil, fmt.Errorf("delete iface: emty UUID")
-	}
+// func buildDeleteInterfaceOps(client client.Client, ifaceUUID string) ([]ovsdb.Operation, error) {
+// 	if ifaceUUID == "" {
+// 		return nil, fmt.Errorf("delete iface: emty UUID")
+// 	}
 
-	m := &Interface{UUID: ifaceUUID}
-	ops, err := client.Where(m).Delete()
-	if err != nil {
-		logger.Errorf("[ovs] build delete interface op failed: %v", err)
-	}
-	return ops, nil
-}
+// 	m := &Interface{UUID: ifaceUUID}
+// 	ops, err := client.Where(m).Delete()
+// 	if err != nil {
+// 		logger.Errorf("[ovs] build delete interface op failed: %v", err)
+// 	}
+// 	return ops, nil
+// }
